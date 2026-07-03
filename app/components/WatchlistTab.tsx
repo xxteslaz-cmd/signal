@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { Recommendation } from "@/lib/types";
 import { RecBadge, ConfBadge, fmtPrice } from "./RecBadges";
 
@@ -9,6 +9,10 @@ interface Row {
   notes: string | null;
   latest: Recommendation | null;
 }
+
+// Auto-refresh a ticker in the background (no click required) if it has no
+// recommendation yet, or its latest call is older than this.
+const AUTO_REFRESH_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 export default function WatchlistTab() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -19,6 +23,10 @@ export default function WatchlistTab() {
   const [adding, setAdding] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+
+  // Tickers we've already auto-triggered a refresh for this page load, so we
+  // don't retry in a loop (e.g. if Claude/Finnhub keys aren't configured).
+  const autoTriedRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setError("");
@@ -36,6 +44,29 @@ export default function WatchlistTab() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Automatically fill in missing recommendations and refresh stale ones —
+  // no button click required. Runs once per ticker per page load.
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const needsRefresh = rows.filter((r) => {
+      if (autoTriedRef.current.has(r.ticker)) return false;
+      if (!r.latest) return true;
+      const age = Date.now() - new Date(r.latest.createdAt).getTime();
+      return age > AUTO_REFRESH_STALE_MS;
+    });
+    if (needsRefresh.length === 0) return;
+
+    needsRefresh.forEach((r) => autoTriedRef.current.add(r.ticker));
+
+    (async () => {
+      // Sequential, not parallel — gentler on Claude/Finnhub rate limits.
+      for (const r of needsRefresh) {
+        await refreshOne(r.ticker);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
 
   async function addTicker(e: React.FormEvent) {
     e.preventDefault();
@@ -206,7 +237,13 @@ export default function WatchlistTab() {
                 </div>
               ) : (
                 <div className="muted small">
-                  Hit ↻ to generate a recommendation from recent data.
+                  {busy[row.ticker] ? (
+                    <>
+                      <span className="spinner" /> Generating recommendation…
+                    </>
+                  ) : (
+                    "Waiting to generate a recommendation…"
+                  )}
                 </div>
               )}
             </div>
