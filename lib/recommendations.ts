@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getTickerSnapshot } from "@/lib/finnhub";
 import { getRecommendation } from "@/lib/claude";
 import { maybeAlertRecFlip } from "@/lib/notifications";
+import { DEFAULT_RISK_TOLERANCE } from "@/lib/risk";
 import type { RecAction } from "@/lib/types";
 
 export interface RefreshResult {
@@ -15,11 +16,14 @@ export interface RefreshResult {
 
 // Generate and store a fresh recommendation for one ticker, detecting flips
 // vs. the previous stored recommendation and firing an SMS alert if configured.
-export async function refreshTicker(ticker: string): Promise<RefreshResult> {
+export async function refreshTicker(
+  ticker: string,
+  riskTolerance: number = DEFAULT_RISK_TOLERANCE
+): Promise<RefreshResult> {
   const t = ticker.toUpperCase();
   try {
     const snapshot = await getTickerSnapshot(t);
-    const rec = await getRecommendation(snapshot);
+    const rec = await getRecommendation(snapshot, riskTolerance);
 
     // Find the most recent prior recommendation to detect a flip.
     const prior = await prisma.recommendation.findFirst({
@@ -67,13 +71,15 @@ export async function refreshTicker(ticker: string): Promise<RefreshResult> {
 
 // Refresh recommendations for the entire watchlist. Runs sequentially to be
 // gentle on free-tier rate limits.
-export async function refreshAllWatchlist(): Promise<RefreshResult[]> {
+export async function refreshAllWatchlist(
+  riskTolerance: number = DEFAULT_RISK_TOLERANCE
+): Promise<RefreshResult[]> {
   const watchlist = await prisma.watchlist.findMany({
     orderBy: { ticker: "asc" },
   });
   const results: RefreshResult[] = [];
   for (const item of watchlist) {
-    results.push(await refreshTicker(item.ticker));
+    results.push(await refreshTicker(item.ticker, riskTolerance));
   }
   return results;
 }

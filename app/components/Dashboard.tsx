@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import WatchlistTab from "./WatchlistTab";
 import InsidersTab from "./InsidersTab";
 import HistoryTab from "./HistoryTab";
+import RiskSlider, { loadRiskTolerance, saveRiskTolerance } from "./RiskSlider";
 
 type Tab = "watchlist" | "insiders" | "history";
 
@@ -15,26 +16,44 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("watchlist");
+  const [riskTolerance, setRiskTolerance] = useState<number>(50);
+
+  // Load the saved risk tolerance after mount (localStorage isn't available
+  // during server render).
+  useEffect(() => {
+    setRiskTolerance(loadRiskTolerance());
+  }, []);
+
+  function updateRisk(v: number) {
+    setRiskTolerance(v);
+    saveRiskTolerance(v);
+  }
 
   return (
-    <div>
-      <nav className="tabs" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`tab ${tab === t.id ? "active" : ""}`}
-            onClick={() => setTab(t.id)}
-            role="tab"
-            aria-selected={tab === t.id}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+    <div className="app-layout">
+      <aside className="risk-panel">
+        <RiskSlider value={riskTolerance} onChange={updateRisk} />
+      </aside>
 
-      {tab === "watchlist" && <WatchlistTab />}
-      {tab === "insiders" && <InsidersTab />}
-      {tab === "history" && <HistoryTab />}
+      <div className="app-main">
+        <nav className="tabs" role="tablist">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`tab ${tab === t.id ? "active" : ""}`}
+              onClick={() => setTab(t.id)}
+              role="tab"
+              aria-selected={tab === t.id}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        {tab === "watchlist" && <WatchlistTab riskTolerance={riskTolerance} />}
+        {tab === "insiders" && <InsidersTab />}
+        {tab === "history" && <HistoryTab />}
+      </div>
     </div>
   );
 }

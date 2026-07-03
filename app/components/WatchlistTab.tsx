@@ -10,11 +10,25 @@ interface Row {
   latest: Recommendation | null;
 }
 
+interface Opportunity {
+  ticker: string;
+  name: string;
+  rationale: string;
+  riskFit: "low" | "medium" | "high";
+  suggestedAction: "buy" | "watch";
+}
+
 // Auto-refresh a ticker in the background (no click required) if it has no
 // recommendation yet, or its latest call is older than this.
 const AUTO_REFRESH_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-export default function WatchlistTab() {
+function riskFitBadgeClass(fit: Opportunity["riskFit"]): string {
+  if (fit === "low") return "buy";
+  if (fit === "medium") return "hold";
+  return "sell";
+}
+
+export default function WatchlistTab({ riskTolerance }: { riskTolerance: number }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -23,6 +37,12 @@ export default function WatchlistTab() {
   const [adding, setAdding] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [oppLoading, setOppLoading] = useState(false);
+  const [oppError, setOppError] = useState("");
+  const [oppSearched, setOppSearched] = useState(false);
 
   // Tickers we've already auto-triggered a refresh for this page load, so we
   // don't retry in a loop (e.g. if Claude/Finnhub keys aren't configured).
@@ -91,6 +111,18 @@ export default function WatchlistTab() {
     }
   }
 
+  async function addTickerSilently(ticker: string) {
+    const res = await fetch("/api/watchlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticker }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? "Failed to add");
+    setOpportunities((list) => list.filter((o) => o.ticker !== ticker));
+    await load();
+  }
+
   async function remove(ticker: string) {
     if (!confirm(`Remove ${ticker} from your watchlist?`)) return;
     setBusy((b) => ({ ...b, [ticker]: true }));
@@ -102,11 +134,19 @@ export default function WatchlistTab() {
     }
   }
 
+  function toggleExpand(ticker: string) {
+    setExpanded((e) => ({ ...e, [ticker]: !e[ticker] }));
+  }
+
   async function refreshOne(ticker: string) {
     setBusy((b) => ({ ...b, [ticker]: true }));
     setError("");
     try {
-      const res = await fetch(`/api/recommendations/${ticker}`, { method: "POST" });
+      const res = await fetch(`/api/recommendations/${ticker}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ riskTolerance }),
+      });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Refresh failed");
       await load();
@@ -121,7 +161,11 @@ export default function WatchlistTab() {
     setRefreshingAll(true);
     setError("");
     try {
-      const res = await fetch("/api/recommendations", { method: "POST" });
+      const res = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ riskTolerance }),
+      });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Refresh failed");
       const failures = (body.results ?? []).filter((r: { ok: boolean }) => !r.ok);
@@ -137,6 +181,25 @@ export default function WatchlistTab() {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setRefreshingAll(false);
+    }
+  }
+
+  async function findOpportunities() {
+    setOppLoading(true);
+    setOppError("");
+    setOppSearched(true);
+    try {
+      const res = await fetch(
+        `/api/opportunities?riskTolerance=${riskTolerance}`
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "Search failed");
+      setOpportunities(body.opportunities ?? []);
+    } catch (e) {
+      setOppError(e instanceof Error ? e.message : "Error");
+      setOpportunities([]);
+    } finally {
+      setOppLoading(false);
     }
   }
 
@@ -192,60 +255,155 @@ export default function WatchlistTab() {
         <div className="empty">No tickers yet. Add one above to get started.</div>
       ) : (
         <div className="grid">
-          {rows.map((row) => (
-            <div className="panel" key={row.ticker}>
-              <div className="rec-card-head">
-                <span className="ticker">{row.ticker}</span>
-                {row.latest ? (
-                  <>
-                    <RecBadge action={row.latest.recommendation} />
-                    <ConfBadge confidence={row.latest.confidence} />
-                  </>
-                ) : (
-                  <span className="badge muted">no call yet</span>
-                )}
-                <div className="spacer" />
-                <button
-                  className="btn secondary small"
-                  onClick={() => refreshOne(row.ticker)}
-                  disabled={busy[row.ticker]}
-                  style={{ padding: "5px 10px" }}
-                >
-                  {busy[row.ticker] ? <span className="spinner" /> : "↻"}
-                </button>
-                <button
-                  className="btn danger"
-                  onClick={() => remove(row.ticker)}
-                  disabled={busy[row.ticker]}
-                >
-                  Remove
-                </button>
-              </div>
-
-              {row.notes && <div className="muted small" style={{ marginBottom: 6 }}>📝 {row.notes}</div>}
-
-              {row.latest ? (
-                <div className="small">
-                  <div style={{ marginBottom: 4 }}>{row.latest.reasoning}</div>
-                  <div className="muted">
-                    <strong>Risks:</strong> {row.latest.keyRisks}
-                  </div>
-                  <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                    Price at call: {fmtPrice(row.latest.priceAtRec)} ·{" "}
-                    {new Date(row.latest.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              ) : (
-                <div className="muted small">
-                  {busy[row.ticker] ? (
+          {rows.map((row) => {
+            const isOpen = !!expanded[row.ticker];
+            return (
+              <div className="panel watchlist-row" key={row.ticker}>
+                <div className="rec-card-head" onClick={() => toggleExpand(row.ticker)}>
+                  <span className="ticker">{row.ticker}</span>
+                  {row.latest ? (
                     <>
-                      <span className="spinner" /> Generating recommendation…
+                      <RecBadge action={row.latest.recommendation} />
+                      <ConfBadge confidence={row.latest.confidence} />
                     </>
                   ) : (
-                    "Waiting to generate a recommendation…"
+                    <span className="badge muted">
+                      {busy[row.ticker] ? <span className="spinner" /> : "no call yet"}
+                    </span>
                   )}
+                  {!isOpen && row.latest ? (
+                    <span className="muted small row-summary hide-mobile">
+                      {row.latest.reasoning}
+                    </span>
+                  ) : (
+                    <div className="spacer" />
+                  )}
+                  <button
+                    className="btn secondary small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      refreshOne(row.ticker);
+                    }}
+                    disabled={busy[row.ticker]}
+                    style={{ padding: "5px 10px" }}
+                  >
+                    {busy[row.ticker] ? <span className="spinner" /> : "↻"}
+                  </button>
+                  <button
+                    className="btn danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      remove(row.ticker);
+                    }}
+                    disabled={busy[row.ticker]}
+                  >
+                    Remove
+                  </button>
+                  <button
+                    className="btn secondary chevron-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpand(row.ticker);
+                    }}
+                    aria-label={isOpen ? "Collapse" : "Expand"}
+                  >
+                    {isOpen ? "▾" : "▸"}
+                  </button>
                 </div>
-              )}
+
+                {isOpen && (
+                  <div className="rec-card-body">
+                    {row.notes && (
+                      <div className="muted small" style={{ marginBottom: 6 }}>
+                        📝 {row.notes}
+                      </div>
+                    )}
+                    {row.latest ? (
+                      <div className="small">
+                        <div style={{ marginBottom: 4 }}>{row.latest.reasoning}</div>
+                        <div className="muted">
+                          <strong>Risks:</strong> {row.latest.keyRisks}
+                        </div>
+                        <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+                          Price at call: {fmtPrice(row.latest.priceAtRec)} ·{" "}
+                          {new Date(row.latest.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="muted small">
+                        {busy[row.ticker] ? (
+                          <>
+                            <span className="spinner" /> Generating recommendation…
+                          </>
+                        ) : (
+                          "Waiting to generate a recommendation…"
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="opportunities-header">
+        <h2>Suggested Opportunities</h2>
+        <span className="muted small">tickers not on your watchlist, matched to your risk tolerance</span>
+        <div className="spacer" />
+        <button className="btn secondary" onClick={findOpportunities} disabled={oppLoading}>
+          {oppLoading ? (
+            <>
+              <span className="spinner" /> Searching…
+            </>
+          ) : oppSearched ? (
+            "Search again"
+          ) : (
+            "Find opportunities"
+          )}
+        </button>
+      </div>
+
+      {oppError && <div className="error-box">{oppError}</div>}
+
+      {!oppSearched && !oppLoading && (
+        <div className="empty">
+          Hit &ldquo;Find opportunities&rdquo; to have Claude search the web for trade
+          ideas matching your current risk tolerance.
+        </div>
+      )}
+
+      {oppLoading && (
+        <div className="empty">
+          <span className="spinner" /> Searching the web for ideas… this can take a
+          minute or two.
+        </div>
+      )}
+
+      {!oppLoading && oppSearched && opportunities.length === 0 && !oppError && (
+        <div className="empty">No suggestions found. Try again in a bit.</div>
+      )}
+
+      {!oppLoading && opportunities.length > 0 && (
+        <div className="grid">
+          {opportunities.map((o) => (
+            <div className="panel opp-card" key={o.ticker}>
+              <div className="rec-card-head">
+                <span className="ticker">{o.ticker}</span>
+                <span className="muted small">{o.name}</span>
+                <div className="spacer" />
+                <span className={`badge ${o.suggestedAction === "buy" ? "buy" : "muted"}`}>
+                  {o.suggestedAction}
+                </span>
+                <span className={`badge ${riskFitBadgeClass(o.riskFit)}`}>{o.riskFit} risk</span>
+              </div>
+              <div className="small" style={{ marginBottom: 10 }}>
+                {o.rationale}
+              </div>
+              <button className="btn" onClick={() => addTickerSilently(o.ticker)}>
+                + Add to watchlist
+              </button>
             </div>
           ))}
         </div>

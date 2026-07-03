@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { refreshAllWatchlist } from "@/lib/recommendations";
+import { clampRiskTolerance } from "@/lib/risk";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -25,7 +26,15 @@ export async function GET() {
 }
 
 // POST /api/recommendations — refresh recommendations for the whole watchlist.
-export async function POST() {
-  const results = await refreshAllWatchlist();
+// Optional body: { riskTolerance?: number } (0-100, defaults to moderate).
+export async function POST(req: NextRequest) {
+  let body: { riskTolerance?: number } = {};
+  try {
+    body = await req.json();
+  } catch {
+    // no body provided — fine, use the default risk tolerance
+  }
+  const riskTolerance = clampRiskTolerance(body.riskTolerance);
+  const results = await refreshAllWatchlist(riskTolerance);
   return NextResponse.json({ results });
 }

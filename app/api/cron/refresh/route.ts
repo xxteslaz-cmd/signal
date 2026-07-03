@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const recResults = await refreshAllWatchlist();
+  const recResults = await refreshAllWatchlist(env.defaultRiskTolerance);
 
   // Insider buy alerts on watchlist tickers.
   let insiderAlerts = 0;

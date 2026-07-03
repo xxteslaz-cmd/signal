@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { env, isConfigured } from "@/lib/env";
 import type { TickerSnapshot } from "@/lib/finnhub";
 import type { RecAction, Confidence } from "@/lib/types";
+import { DEFAULT_RISK_TOLERANCE, riskDescriptor } from "@/lib/risk";
 
 // Default to Anthropic's most capable model; override with CLAUDE_MODEL (e.g.
 // claude-sonnet-5) if you want to trade some quality for lower cost on daily
@@ -47,9 +48,16 @@ function getClient(): Anthropic {
   return new Anthropic({ apiKey: env.anthropicApiKey });
 }
 
-function buildUserContent(snapshot: TickerSnapshot): string {
+function buildUserContent(snapshot: TickerSnapshot, riskTolerance: number): string {
   const { ticker, quote, profile, keyMetrics, news } = snapshot;
   const lines: string[] = [];
+  lines.push(
+    `Investor risk tolerance: ${riskDescriptor(riskTolerance)} (${riskTolerance}/100 on a low-to-high risk scale).`
+  );
+  lines.push(
+    "Calibrate the recommendation and confidence to this risk tolerance, but stay strictly grounded in the data below — never invent a more favorable or unfavorable picture than the data supports."
+  );
+  lines.push("");
   lines.push(`Ticker: ${ticker}`);
   if (profile.name) lines.push(`Company: ${profile.name}`);
   if (profile.finnhubIndustry) lines.push(`Industry: ${profile.finnhubIndustry}`);
@@ -89,7 +97,8 @@ function buildUserContent(snapshot: TickerSnapshot): string {
 }
 
 export async function getRecommendation(
-  snapshot: TickerSnapshot
+  snapshot: TickerSnapshot,
+  riskTolerance: number = DEFAULT_RISK_TOLERANCE
 ): Promise<RecResult> {
   const client = getClient();
 
@@ -98,7 +107,7 @@ export async function getRecommendation(
     max_tokens: 1200,
     system: SYSTEM_PROMPT,
     output_config: { format: { type: "json_schema", schema: REC_SCHEMA } },
-    messages: [{ role: "user", content: buildUserContent(snapshot) }],
+    messages: [{ role: "user", content: buildUserContent(snapshot, riskTolerance) }],
   });
 
   // With output_config.format the model returns a single text block of JSON.

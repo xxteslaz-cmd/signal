@@ -42,7 +42,7 @@ a:hover {
 }
 
 .container {
-  max-width: 960px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 20px 16px 80px;
 }
@@ -213,6 +213,92 @@ button.btn.danger:hover {
   gap: 12px;
 }
 
+.app-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.risk-panel {
+  width: 190px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.risk-slider-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.risk-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--buy), var(--hold), var(--sell));
+  outline: none;
+  margin: 10px 0 12px;
+  cursor: pointer;
+}
+.risk-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.risk-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 3px solid var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.risk-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.risk-value {
+  text-align: center;
+  margin-top: 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .app-layout {
+    flex-direction: column;
+  }
+  .risk-panel {
+    width: 100%;
+    position: static;
+  }
+}
+
 table.feed {
   width: 100%;
   border-collapse: collapse;
@@ -281,6 +367,44 @@ table.feed tr:last-child td {
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+.watchlist-row {
+  padding: 10px 14px;
+}
+.watchlist-row .rec-card-head {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+.watchlist-row .rec-card-body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.watchlist-row .row-summary {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.chevron-btn {
+  padding: 5px 9px !important;
+  line-height: 1;
+}
+
+.opportunities-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0 12px;
+}
+.opportunities-header h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.opp-card .rec-card-head {
+  margin-bottom: 8px;
 }
 
 /* Insider trade signal accent bar */

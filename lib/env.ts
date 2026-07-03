@@ -15,6 +15,10 @@ export const env = {
   insiderBuyAlertThreshold: Number(
     process.env.INSIDER_BUY_ALERT_THRESHOLD ?? "50000"
   ),
+  // Risk tolerance (0-100) used by the automatic cron refresh, which has no
+  // slider to read from. The in-app slider overrides this for manual/on-page
+  // refreshes.
+  defaultRiskTolerance: Number(process.env.DEFAULT_RISK_TOLERANCE ?? "50"),
 } as const;
 
 export function isConfigured(...keys: string[]): boolean {
