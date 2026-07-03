@@ -1,13 +1,14 @@
 // Signal — personal stock watchlist + AI recommendation app
-// Single-user, SQLite (file-based, no server needed).
+// Single-user, Postgres via Neon.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled connection, used at runtime
+  directUrl = env("DIRECT_URL") // direct (unpooled) connection, used for migrations
 }
 
 model Watchlist {
