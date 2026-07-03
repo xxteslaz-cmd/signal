@@ -1,0 +1,47 @@
+// Signal — personal stock watchlist + AI recommendation app
+// Single-user, SQLite (file-based, no server needed).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Watchlist {
+  id        Int      @id @default(autoincrement())
+  ticker    String   @unique
+  notes     String?
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  @@map("watchlist")
+}
+
+model Recommendation {
+  id             Int      @id @default(autoincrement())
+  ticker         String
+  recommendation String // buy | hold | sell
+  confidence     String // low | medium | high
+  reasoning      String
+  keyRisks       String   @map("key_risks")
+  priceAtRec     Float?   @map("price_at_rec")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([ticker, createdAt])
+  @@map("recommendations")
+}
+
+// Prevents duplicate SMS for the same event.
+model NotificationLog {
+  id        Int      @id @default(autoincrement())
+  eventKey  String   @unique @map("event_key") // stable hash of the triggering event
+  eventType String   @map("event_type") // insider_buy | rec_flip
+  ticker    String
+  message   String
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  @@index([ticker])
+  @@map("notification_log")
+}
