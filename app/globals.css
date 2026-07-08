@@ -407,6 +407,47 @@ table.feed tr:last-child td {
   margin-bottom: 8px;
 }
 
+/* Live Trading dashboard */
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--buy);
+  margin-right: 6px;
+  vertical-align: middle;
+  animation: livepulse 1.6s ease-in-out infinite;
+}
+.live-dot.paused {
+  background: var(--muted);
+  animation: none;
+}
+@keyframes livepulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+  }
+}
+
+td.price-cell {
+  transition: background-color 0.1s ease;
+  border-radius: 4px;
+}
+td.price-cell.flash-up {
+  background-color: rgba(34, 197, 94, 0.22);
+}
+td.price-cell.flash-down {
+  background-color: rgba(239, 68, 68, 0.22);
+}
+.live-price {
+  font-weight: 700;
+}
+
 /* Insider trade signal accent bar */
 .signal-strong {
   border-left: 3px solid var(--buy);

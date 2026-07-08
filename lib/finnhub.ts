@@ -57,6 +57,26 @@ export async function getQuote(ticker: string): Promise<Quote> {
   });
 }
 
+// Live quote for the Live Trading dashboard: short 15s cache so repeated polls
+// feel real-time without blowing the free-tier rate limit.
+const LIVE_QUOTE_TTL = 15 * 1000;
+export async function getLiveQuote(ticker: string): Promise<Quote> {
+  return cached(`quote-live:${ticker}`, LIVE_QUOTE_TTL, async () => {
+    const q = await fhGet<RawQuote>(`/quote?symbol=${encodeURIComponent(ticker)}`);
+    const price = q.c && q.c > 0 ? q.c : null;
+    return {
+      ticker,
+      price,
+      change: q.d,
+      changePercent: q.dp,
+      high: q.h || null,
+      low: q.l || null,
+      open: q.o || null,
+      prevClose: q.pc || null,
+    };
+  });
+}
+
 // Lightweight "just the price" helper used by history/backtest.
 export async function getPrice(ticker: string): Promise<number | null> {
   try {

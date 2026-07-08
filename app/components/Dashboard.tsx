@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import WatchlistTab from "./WatchlistTab";
 import InsidersTab from "./InsidersTab";
 import HistoryTab from "./HistoryTab";
+import LiveTradingTab from "./LiveTradingTab";
 import RiskSlider, { loadRiskTolerance, saveRiskTolerance } from "./RiskSlider";
 
-type Tab = "watchlist" | "insiders" | "history";
+type Tab = "watchlist" | "live" | "insiders" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "watchlist", label: "Watchlist" },
+  { id: "live", label: "Live Trading" },
   { id: "insiders", label: "Insider Trades" },
   { id: "history", label: "History / Backtest" },
 ];
@@ -51,6 +53,7 @@ export default function Dashboard() {
         </nav>
 
         {tab === "watchlist" && <WatchlistTab riskTolerance={riskTolerance} />}
+        {tab === "live" && <LiveTradingTab />}
         {tab === "insiders" && <InsidersTab />}
         {tab === "history" && <HistoryTab />}
       </div>
