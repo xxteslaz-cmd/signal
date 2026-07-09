@@ -104,49 +104,39 @@ export default function LiveTradingTab() {
           No tickers on your watchlist yet. Add some from the Watchlist tab.
         </div>
       ) : (
-        <div className="panel" style={{ padding: 0, overflowX: "auto" }}>
-          <table className="feed">
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th>Price</th>
-                <th>Chg%</th>
-                <th className="hide-mobile">Day range</th>
-                <th>Call</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.ticker}>
-                  <td className="ticker">{r.ticker}</td>
-                  <td
-                    className={`price-cell live-price mono ${
-                      flash[r.ticker] ? `flash-${flash[r.ticker]}` : ""
-                    }`}
-                  >
-                    {r.quote?.price != null ? fmtPrice(r.quote.price) : "—"}
-                  </td>
-                  <td className={`mono ${pctClass(r.quote?.changePercent ?? null)}`}>
-                    {r.quote?.changePercent != null
-                      ? fmtPct(r.quote.changePercent)
-                      : "—"}
-                  </td>
-                  <td className="hide-mobile mono small muted">
-                    {r.quote?.low != null && r.quote?.high != null
-                      ? `${fmtPrice(r.quote.low)} – ${fmtPrice(r.quote.high)}`
-                      : "—"}
-                  </td>
-                  <td>
-                    {r.recommendation ? (
-                      <RecBadge action={r.recommendation} />
-                    ) : (
-                      <span className="badge muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="live-grid">
+          {rows.map((r) => (
+            <div className="panel live-card" key={r.ticker}>
+              <div className="live-card-top">
+                <span className="ticker">{r.ticker}</span>
+                <div className="spacer" />
+                {r.recommendation ? (
+                  <RecBadge action={r.recommendation} />
+                ) : (
+                  <span className="badge muted">—</span>
+                )}
+              </div>
+              <div className="live-card-metrics">
+                <span
+                  className={`live-price mono ${
+                    flash[r.ticker] ? `flash-${flash[r.ticker]}` : ""
+                  }`}
+                >
+                  {r.quote?.price != null ? fmtPrice(r.quote.price) : "—"}
+                </span>
+                <span className={`mono ${pctClass(r.quote?.changePercent ?? null)}`}>
+                  {r.quote?.changePercent != null
+                    ? fmtPct(r.quote.changePercent)
+                    : "—"}
+                </span>
+                <span className="mono small muted">
+                  {r.quote?.low != null && r.quote?.high != null
+                    ? `${fmtPrice(r.quote.low)}–${fmtPrice(r.quote.high)}`
+                    : "—"}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
