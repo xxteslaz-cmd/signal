@@ -380,11 +380,11 @@ table.feed tr:last-child td {
 /* Watchlist as a grid of square ticker tiles */
 .ticker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
   gap: 10px;
 }
 .ticker-tile {
-  aspect-ratio: 1 / 1;
+  min-height: 84px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -443,10 +443,11 @@ table.feed tr:last-child td {
 
 @media (max-width: 620px) {
   .ticker-grid {
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
   .ticker-tile {
     padding: 9px;
+    min-height: 72px;
   }
   .tile-ticker {
     font-size: 15px;
