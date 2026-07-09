@@ -37,7 +37,7 @@ export default function WatchlistTab({ riskTolerance }: { riskTolerance: number 
   const [adding, setAdding] = useState(false);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<string | null>(null);
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [oppLoading, setOppLoading] = useState(false);
@@ -134,8 +134,8 @@ export default function WatchlistTab({ riskTolerance }: { riskTolerance: number 
     }
   }
 
-  function toggleExpand(ticker: string) {
-    setExpanded((e) => ({ ...e, [ticker]: !e[ticker] }));
+  function toggleSelect(ticker: string) {
+    setSelected((s) => (s === ticker ? null : ticker));
   }
 
   async function refreshOne(ticker: string) {
@@ -203,6 +203,8 @@ export default function WatchlistTab({ riskTolerance }: { riskTolerance: number 
     }
   }
 
+  const selectedRow = selected ? rows.find((r) => r.ticker === selected) ?? null : null;
+
   return (
     <div>
       <div className="panel">
@@ -254,98 +256,108 @@ export default function WatchlistTab({ riskTolerance }: { riskTolerance: number 
       ) : rows.length === 0 ? (
         <div className="empty">No tickers yet. Add one above to get started.</div>
       ) : (
-        <div className="grid">
-          {rows.map((row) => {
-            const isOpen = !!expanded[row.ticker];
-            return (
-              <div className="panel watchlist-row" key={row.ticker}>
-                <div className="rec-card-head" onClick={() => toggleExpand(row.ticker)}>
-                  <span className="ticker">{row.ticker}</span>
-                  {row.latest ? (
-                    <>
-                      <RecBadge action={row.latest.recommendation} />
-                      <ConfBadge confidence={row.latest.confidence} />
-                    </>
-                  ) : (
-                    <span className="badge muted">
-                      {busy[row.ticker] ? <span className="spinner" /> : "no call yet"}
-                    </span>
-                  )}
-                  {!isOpen && row.latest ? (
-                    <span className="muted small row-summary hide-mobile">
-                      {row.latest.reasoning}
-                    </span>
-                  ) : (
-                    <div className="spacer" />
-                  )}
-                  <button
-                    className="btn secondary small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      refreshOne(row.ticker);
-                    }}
-                    disabled={busy[row.ticker]}
-                    style={{ padding: "5px 10px" }}
-                  >
-                    {busy[row.ticker] ? <span className="spinner" /> : "↻"}
-                  </button>
-                  <button
-                    className="btn danger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(row.ticker);
-                    }}
-                    disabled={busy[row.ticker]}
-                  >
-                    Remove
-                  </button>
-                  <button
-                    className="btn secondary chevron-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpand(row.ticker);
-                    }}
-                    aria-label={isOpen ? "Collapse" : "Expand"}
-                  >
-                    {isOpen ? "▾" : "▸"}
-                  </button>
-                </div>
-
-                {isOpen && (
-                  <div className="rec-card-body">
-                    {row.notes && (
-                      <div className="muted small" style={{ marginBottom: 6 }}>
-                        📝 {row.notes}
-                      </div>
-                    )}
+        <>
+          <div className="ticker-grid">
+            {rows.map((row) => {
+              const rec = row.latest?.recommendation;
+              return (
+                <button
+                  key={row.ticker}
+                  className={`ticker-tile ${selected === row.ticker ? "selected" : ""}`}
+                  data-rec={rec ?? "none"}
+                  onClick={() => toggleSelect(row.ticker)}
+                >
+                  <div className="tile-top">
+                    <span className="tile-ticker">{row.ticker}</span>
+                    {row.notes && <span className="tile-note" title={row.notes}>📝</span>}
+                  </div>
+                  <div className="spacer" />
+                  <div className="tile-foot">
                     {row.latest ? (
-                      <div className="small">
-                        <div style={{ marginBottom: 4 }}>{row.latest.reasoning}</div>
-                        <div className="muted">
-                          <strong>Risks:</strong> {row.latest.keyRisks}
-                        </div>
-                        <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                          Price at call: {fmtPrice(row.latest.priceAtRec)} ·{" "}
-                          {new Date(row.latest.createdAt).toLocaleString()}
-                        </div>
-                      </div>
+                      <>
+                        <RecBadge action={row.latest.recommendation} />
+                        <span className="tile-conf muted">{row.latest.confidence}</span>
+                      </>
+                    ) : busy[row.ticker] ? (
+                      <span className="muted small">
+                        <span className="spinner" /> …
+                      </span>
                     ) : (
-                      <div className="muted small">
-                        {busy[row.ticker] ? (
-                          <>
-                            <span className="spinner" /> Generating recommendation…
-                          </>
-                        ) : (
-                          "Waiting to generate a recommendation…"
-                        )}
-                      </div>
+                      <span className="muted small">no call</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedRow && (
+            <div className="panel" style={{ marginTop: 14 }}>
+              <div className="rec-card-head">
+                <span className="ticker">{selectedRow.ticker}</span>
+                {selectedRow.latest && (
+                  <>
+                    <RecBadge action={selectedRow.latest.recommendation} />
+                    <ConfBadge confidence={selectedRow.latest.confidence} />
+                  </>
+                )}
+                <div className="spacer" />
+                <button
+                  className="btn secondary small"
+                  onClick={() => refreshOne(selectedRow.ticker)}
+                  disabled={busy[selectedRow.ticker]}
+                  style={{ padding: "5px 10px" }}
+                >
+                  {busy[selectedRow.ticker] ? <span className="spinner" /> : "↻"}
+                </button>
+                <button
+                  className="btn danger"
+                  onClick={() => remove(selectedRow.ticker)}
+                  disabled={busy[selectedRow.ticker]}
+                >
+                  Remove
+                </button>
+                <button
+                  className="btn secondary chevron-btn"
+                  onClick={() => setSelected(null)}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="rec-card-body">
+                {selectedRow.notes && (
+                  <div className="muted small" style={{ marginBottom: 6 }}>
+                    📝 {selectedRow.notes}
+                  </div>
+                )}
+                {selectedRow.latest ? (
+                  <div className="small">
+                    <div style={{ marginBottom: 4 }}>{selectedRow.latest.reasoning}</div>
+                    <div className="muted">
+                      <strong>Risks:</strong> {selectedRow.latest.keyRisks}
+                    </div>
+                    <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+                      Price at call: {fmtPrice(selectedRow.latest.priceAtRec)} ·{" "}
+                      {new Date(selectedRow.latest.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="muted small">
+                    {busy[selectedRow.ticker] ? (
+                      <>
+                        <span className="spinner" /> Generating recommendation…
+                      </>
+                    ) : (
+                      "Waiting to generate a recommendation…"
                     )}
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="opportunities-header">
