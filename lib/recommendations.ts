@@ -40,6 +40,7 @@ export async function refreshTicker(
         reasoning: rec.reasoning,
         keyRisks: rec.key_risks,
         priceAtRec: snapshot.quote.price ?? null,
+        riskTolerance,
       },
     });
 

@@ -49,3 +49,39 @@ export interface HistoryRow extends Recommendation {
   currentPrice: number | null;
   priceChangePercent: number | null;
 }
+
+// --- Backtest / recommendation-tracking types ---
+
+export interface ConfidenceBucketStats {
+  evaluated: number;
+  correct: number;
+  accuracyPercent: number | null; // null when evaluated === 0
+}
+
+export interface BacktestSummary {
+  totalRecommendations: number;
+  evaluatedCount: number; // rows with outcomeCorrect !== null
+  correctCount: number;
+  overallAccuracyPercent: number | null; // null when evaluatedCount === 0
+  byConfidence: Record<Confidence, ConfidenceBucketStats>;
+}
+
+export interface BacktestRow {
+  id: number;
+  ticker: string;
+  recommendation: RecAction;
+  confidence: Confidence;
+  riskTolerance: number | null;
+  createdAt: string;
+  priceAtRec: number | null;
+  priceAfter7d: number | null;
+  priceAfter30d: number | null;
+  currentPrice: number | null; // live price, only fetched for unevaluated rows
+  outcomeCorrect: boolean | null;
+  evaluatedAt: string | null;
+}
+
+export interface BacktestResponse {
+  summary: BacktestSummary;
+  rows: BacktestRow[];
+}

@@ -30,7 +30,20 @@ model Recommendation {
   priceAtRec     Float?   @map("price_at_rec")
   createdAt      DateTime @default(now()) @map("created_at")
 
+  // Risk tolerance (0-100) the call was generated under. Nullable — rows
+  // created before this field existed won't have it.
+  riskTolerance Int? @map("risk_tolerance")
+
+  // Backtest evaluation, filled in later by the daily evaluation cron.
+  // priceAfter7d is an interim checkpoint (informational only); outcomeCorrect
+  // is decided at the 30-day mark — see lib/backtest.ts for the rationale.
+  priceAfter7d   Float?    @map("price_after_7d")
+  priceAfter30d  Float?    @map("price_after_30d")
+  outcomeCorrect Boolean?  @map("outcome_correct")
+  evaluatedAt    DateTime? @map("evaluated_at")
+
   @@index([ticker, createdAt])
+  @@index([createdAt])
   @@map("recommendations")
 }
 
