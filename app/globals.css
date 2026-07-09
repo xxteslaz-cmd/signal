@@ -217,6 +217,7 @@ button.btn.danger:hover {
   display: flex;
   gap: 20px;
   align-items: flex-start;
+  max-width: 100%;
 }
 
 .risk-panel {
@@ -227,8 +228,12 @@ button.btn.danger:hover {
 }
 
 .app-main {
-  flex: 1;
+  flex: 1 1 auto;
+  /* min-width:0 lets this flex item shrink below its content's intrinsic width
+     so inner scroll containers (tables) don't push the whole page wider than
+     the viewport. max-width caps it at the available space. */
   min-width: 0;
+  max-width: 100%;
 }
 
 .risk-slider-label {
@@ -292,6 +297,9 @@ button.btn.danger:hover {
 @media (max-width: 760px) {
   .app-layout {
     flex-direction: column;
+    /* Stretch children to full width when stacked, otherwise flex-start sizes
+       app-main to its content and the page overflows horizontally. */
+    align-items: stretch;
   }
   .risk-panel {
     width: 100%;

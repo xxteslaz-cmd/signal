@@ -110,9 +110,9 @@ export default function LiveTradingTab() {
               <tr>
                 <th>Ticker</th>
                 <th>Price</th>
-                <th>Day change</th>
+                <th>Chg%</th>
                 <th className="hide-mobile">Day range</th>
-                <th>AI call</th>
+                <th>Call</th>
               </tr>
             </thead>
             <tbody>
